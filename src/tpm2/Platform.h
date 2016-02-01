@@ -198,13 +198,14 @@ _plat__NvCommit(void);
 
 // C.8.5.6.	_plat__NvMemoryRead()
 // Read a chunk of NV memory
-
+#if 0
 LIB_EXPORT void
 _plat__NvMemoryRead(
 		    unsigned int        startOffset,         // IN: read start
 		    unsigned int        size,                // IN: size of bytes to read
 		    void                *data                // OUT: data buffer
 		    );
+#endif
 
 // C.8.5.7.	_plat__NvIsDifferent()
 
@@ -226,12 +227,14 @@ _plat__NvIsDifferent(
 
 // Write a chunk of NV memory
 
+#if 0
 LIB_EXPORT void
 _plat__NvMemoryWrite(
 		     unsigned int        startOffset,         // IN: read start
 		     unsigned int        size,                // IN: size of bytes to read
 		     void                *data                // OUT: data buffer
 		     );
+#endif
 
 // C.8.5.9.	_plat__NvMemoryClear()
 

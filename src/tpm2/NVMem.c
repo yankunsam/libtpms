@@ -280,7 +280,7 @@ _plat__IsNvAvailable(
 
 // C.6.3.5.	_plat__NvMemoryRead()
 // Function: Read a chunk of NV memory
-
+#if 0
 LIB_EXPORT void
 _plat__NvMemoryRead(
 		    unsigned int     startOffset,   // IN: read start
@@ -294,6 +294,7 @@ _plat__NvMemoryRead(
     memcpy(data, &s_NV[startOffset], size);
     return;
 }
+#endif
 
 // C.6.3.6.	_plat__NvIsDifferent()
 // This function checks to see if the NV is different from the test value. This is so that NV will not be written if it has not changed.
@@ -313,7 +314,7 @@ _plat__NvIsDifferent(
 
 // C.6.3.7.	_plat__NvMemoryWrite()
 // This function is used to update NV memory. The write is to a memory copy of NV. At the end of the current command, any changes are written to the actual NV memory.
-
+#if 0
 LIB_EXPORT void
 _plat__NvMemoryWrite(
 		     unsigned int     startOffset,   // IN: write start
@@ -326,6 +327,7 @@ _plat__NvMemoryWrite(
     // Copy the data to the NV image
     memcpy(&s_NV[startOffset], data, size);
 }
+#endif
 
 // C.6.3.8. _plat__NvMemoryClear()
 

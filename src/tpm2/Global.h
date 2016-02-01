@@ -158,6 +158,7 @@ typedef BYTE    NAME[sizeof(TPMU_NAME)];
 // are not part of the public properties but are used by the TPM in managing the object. An
 // OBJECT_ATTRIBUTES is used in the definition of the OBJECT data type.
 
+#if LITTLE_ENDIAN_TPM == YES
 typedef struct
 {
     unsigned            publicOnly   : 1;   //0) SET if only the public portion of
@@ -194,6 +195,47 @@ typedef struct
     //    of an RSA key has been validated.
     unsigned        reserved    : 1;    //15) reserved bits. unused.
 } OBJECT_ATTRIBUTES;
+#endif
+
+#if BIG_ENDIAN_TPM == YES
+typedef struct
+{
+    //    of an RSA key has been validated.
+    unsigned        reserved    : 1;    //15) reserved bits. unused.
+    //    attributes to be a parent key
+    unsigned            privateExp  : 1;    //14) SET when the private exponent
+    //    data has been received.  It
+    //    works with ticketSafe bit
+    unsigned            isParent    : 1;    //13) SET if the key has the proper
+    //    for hash sequence object
+    unsigned            firstBlock  : 1;    //12) SET if the first block of hash
+
+    //   owner evict object.  Platform-
+    //   evict object belongs to PPS
+    //   hierarchy, owner-evict object
+    //   belongs to SPS or EPS hierarchy.
+    //   This bit is also used to mark a
+    //   completed sequence object so it
+    //   will be flush when the
+    //   SequenceComplete command succeeds.
+    unsigned            ticketSafe  : 1;    //11) SET if a ticket is safe to create
+    unsigned            eventSeq    : 1;    //10) SET for an event sequence object
+    unsigned            hashSeq     : 1;    //9) SET for a hash sequence object
+    unsigned            hmacSeq     : 1;    //8) SET for an HMAC sequence object
+    unsigned            stClear     : 1;    //7) SET for an stClear object
+    unsigned            temporary   : 1;    //6) SET for a temporary object
+    unsigned            primary     : 1;    //5) SET for a primary object
+    //   Hierarchy
+    unsigned            evict        : 1;   //4) SET if the object is a platform or
+    //   Hierarchy
+    unsigned            spsHierarchy : 1;   //3) SET f the object belongs to SPS
+    //   Hierarchy
+    unsigned            ppsHierarchy : 1;   //2) SET if the object belongs to PPS
+    //   an object is loaded
+    unsigned            epsHierarchy : 1;   //1) SET if the object belongs to EPS
+    unsigned            publicOnly   : 1;   //0) SET if only the public portion of
+} OBJECT_ATTRIBUTES;
+#endif
 
 // 5.8.4.3	OBJECT Structure
 
@@ -562,11 +604,12 @@ typedef enum
 // according to the type of the index. In this implementation, all of the index is manipulated as a
 // unit.
 
-typedef struct
+typedef struct _NV_INDEX NV_INDEX;
+struct _NV_INDEX
 {
     TPMS_NV_PUBLIC      publicArea;
     TPM2B_AUTH          authValue;
-} NV_INDEX;
+};
 
 // 5.8.10	COMMIT_INDEX_MASK
 

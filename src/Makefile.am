@@ -201,6 +201,7 @@ libtpms_tpm2_la_SOURCES = \
 	tpm2/Commands.c \
 	tpm2/ContextCommands.c \
 	tpm2/Context_spt.c \
+	tpm2/NVMarshal.c \
 	tpm2/CryptSelfTest.c \
 	tpm2/CryptUtil.c \
 	tpm2/DA.c \

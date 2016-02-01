@@ -459,6 +459,9 @@ TPM2_NV_Increment(
 	    g_updateNV = TRUE;
 	}
 
+    // NvWriteIndexData does not convert endianess
+    countValue = htobe64(countValue);
+
     // Write NV data back. A TPM_RC_NV_UNAVAILABLE or TPM_RC_NV_RATE error may
     // be returned at this point. If necessary, this function will set the
     // TPMA_NV_WRITTEN attribute
@@ -605,6 +608,9 @@ TPM2_NV_SetBits(
 	    result = NvIsAvailable();
 	    if(result != TPM_RC_SUCCESS)
 		return result;
+
+            // NvWriteIndexData does not convert endianess
+            newValue = htobe64(newValue);
 
 	    // Write index data back. If necessary, this function will SET
 	    // TPMA_NV_WRITTEN.

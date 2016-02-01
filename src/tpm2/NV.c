@@ -73,6 +73,8 @@
 #include "InternalRoutines.h"
 #include "Platform.h"
 #include    "NV.h"
+#include "NVMarshal.h"
+#include "assert.h"
 
 // NV Index/evict object iterator value
 
@@ -150,7 +152,7 @@ NvReadMaxCount(
 	       )
 {
     UINT64      countValue;
-    _plat__NvMemoryRead(s_maxCountAddr, sizeof(UINT64), &countValue);
+    _plat__NvMemoryReadUINT64(s_maxCountAddr, &countValue);
     return countValue;
 }
 
@@ -162,7 +164,7 @@ NvWriteMaxCount(
 		UINT64           maxCount
 		)
 {
-    _plat__NvMemoryWrite(s_maxCountAddr, sizeof(UINT64), &maxCount);
+    _plat__NvMemoryWriteUINT64(s_maxCountAddr, &maxCount);
     return;
 }
 
@@ -209,7 +211,7 @@ NvNext(
     
     // Adjust iter pointer pointing to next entity
     // Read pointer value
-    _plat__NvMemoryRead(*iter, sizeof(UINT32), iter);
+    _plat__NvMemoryReadUINT32(*iter, iter);
     
     if(*iter == 0) return 0;
     
@@ -235,7 +237,7 @@ NvGetEnd(
 	{
 	    // Read offset
 	    endAddr -= sizeof(UINT32);
-	    _plat__NvMemoryRead(endAddr, sizeof(UINT32), &endAddr);
+	    _plat__NvMemoryReadUINT32(endAddr, &endAddr);
 	}
     
     return endAddr;
@@ -359,14 +361,13 @@ NvAdd(
     nextAddr = endAddr + sizeof(UINT32) + totalSize;
     
     // Write next pointer
-    _plat__NvMemoryWrite(endAddr, sizeof(UINT32), &nextAddr);
-    
-    // Write entity data
-    _plat__NvMemoryWrite(endAddr + sizeof(UINT32), bufferSize, entity);
-    
+    _plat__NvMemoryWriteUINT32(endAddr, &nextAddr);
+   // Write entity data
+    _plat__NvMemoryWriteArray(endAddr + sizeof(UINT32), bufferSize, entity);
+
     // Write the end of list if it is not going to exceed the NV space
     if(nextAddr + sizeof(UINT32) <= s_evictNvEnd)
-	_plat__NvMemoryWrite(nextAddr, sizeof(UINT32), &listEnd);
+	_plat__NvMemoryWriteUINT32(nextAddr, &listEnd);
     
     // Set the flag so that NV changes are committed before the command completes.
     g_updateNV = TRUE;
@@ -386,7 +387,7 @@ NvDelete(
     UINT32          listEnd = 0;
     
     // Get the offset of the next entry.
-    _plat__NvMemoryRead(entryAddr, sizeof(UINT32), &next);
+    _plat__NvMemoryReadUINT32(entryAddr, &next);
     
     // The size of this entry is the difference between the current entry and the
     // next entry.
@@ -404,7 +405,7 @@ NvDelete(
 	    UINT32      size, oldAddr, newAddr;
 	    
 	    // Now check for the end marker
-	    _plat__NvMemoryRead(next, sizeof(UINT32), &oldAddr);
+	    _plat__NvMemoryReadUINT32(next, &oldAddr);
 	    if(oldAddr == 0)
 		break;
 	    
@@ -419,14 +420,14 @@ NvDelete(
 	    
 	    // Update forward link
 	    newAddr = oldAddr - entrySize;
-	    _plat__NvMemoryWrite(next - entrySize, sizeof(UINT32), &newAddr);
+	    _plat__NvMemoryWriteUINT32(next - entrySize, &newAddr);
 	    next = oldAddr;
 	}
     // Get the offset of the offset immetiately after the last moved byte
     next = next - entrySize;
     
     // Mark the end of list
-    _plat__NvMemoryWrite(next, sizeof(UINT32), &listEnd);
+    _plat__NvMemoryWriteUINT32(next, &listEnd);
     
     // Advance the end pointer
     next += sizeof(UINT32);
@@ -485,7 +486,7 @@ NvGetRAMIndexOffset(
 	    UINT32              *currSizep;
 
 	    tpm_handle = (TPM_HANDLE *)&s_ramIndex[currAddr + sizeof(UINT32)];
-	    currHandle = *tpm_handle;
+	    currHandle = be32toh(*tpm_handle);
 	    
 	    // Found a match
 	    if(currHandle == handle)
@@ -494,7 +495,7 @@ NvGetRAMIndexOffset(
 		break;
 	    
 	    currSizep = (UINT32 *) &s_ramIndex[currAddr];
-	    currSize = *currSizep;
+	    currSize = be32toh(*currSizep);
 	    currAddr += sizeof(UINT32) + currSize;
 	}
     
@@ -517,19 +518,19 @@ NvAddRAM(
     TPMI_RH_NV_INDEX *rhindexp;
     // Add data space at the end of reserved RAM buffer
     sizep = (UINT32 *) &s_ramIndex[s_ramIndexSize];
-    *sizep  = size + sizeof(TPMI_RH_NV_INDEX);
+    *sizep  = htobe32(size + sizeof(TPMI_RH_NV_INDEX));
 
     rhindexp = (TPMI_RH_NV_INDEX *) &s_ramIndex[s_ramIndexSize + sizeof(UINT32)];
-    *rhindexp  = handle;
+    *rhindexp  = htobe32(handle);
     s_ramIndexSize += sizeof(UINT32) + sizeof(TPMI_RH_NV_INDEX) + size;
     
     pAssert(s_ramIndexSize <= RAM_INDEX_SPACE);
     
     // Update NV version of s_ramIndexSize
-    _plat__NvMemoryWrite(s_ramIndexSizeAddr, sizeof(UINT32), &s_ramIndexSize);
+    _plat__NvMemoryWriteUINT32(s_ramIndexSizeAddr, &s_ramIndexSize);
     
     // Write reserved RAM space to NV to reflect the newly added NV Index
-    _plat__NvMemoryWrite(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
+    _plat__NvMemoryWriteArray(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
     
     return;
 }
@@ -558,7 +559,7 @@ NvDeleteRAM(
     
     // Get node size
     sizep = (UINT32 *) &s_ramIndex[nodeOffset];
-    size = *sizep;
+    size = be32toh(*sizep);
     
     // Get the offset of next node
     nextNode = nodeOffset + sizeof(UINT32) + size;
@@ -574,10 +575,10 @@ NvDeleteRAM(
     s_ramIndexSize -= size + sizeof(UINT32);
     
     // Update NV version of s_ramIndexSize
-    _plat__NvMemoryWrite(s_ramIndexSizeAddr, sizeof(UINT32), &s_ramIndexSize);
+    _plat__NvMemoryWriteUINT32(s_ramIndexSizeAddr, &s_ramIndexSize);
     
     // Write reserved RAM space to NV to reflect the newly delete NV Index
-    _plat__NvMemoryWrite(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
+    _plat__NvMemoryWriteArray(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
     
     return;
 }
@@ -680,13 +681,13 @@ NvInit(
     NvInitStatic();
     
     // Initialize RAM index space as unused
-    _plat__NvMemoryWrite(s_ramIndexSizeAddr, sizeof(UINT32), &nullPointer);
+    _plat__NvMemoryWriteUINT32(s_ramIndexSizeAddr, &nullPointer);
     
     // Initialize max counter value to 0
-    _plat__NvMemoryWrite(s_maxCountAddr, sizeof(UINT64), &zeroCounter);
+    _plat__NvMemoryWriteUINT64(s_maxCountAddr, &zeroCounter);
     
     // Initialize the next offset of the first entry in evict/index list to 0
-    _plat__NvMemoryWrite(s_evictNvStart, sizeof(TPM_HANDLE), &nullPointer);
+    _plat__NvMemoryWriteUINT32(s_evictNvStart, &nullPointer);
     
     return;
     
@@ -701,10 +702,105 @@ NvReadReserved(
 	       void            *buffer         // OUT: buffer receives the data.
 	       )
 {
+    TPM_RC rc;
+    (void)rc;
+
     // Input type should be valid
     pAssert(type >= 0 && type < NV_RESERVE_LAST);
     
-    _plat__NvMemoryRead(s_reservedAddr[type], s_reservedSize[type], buffer);
+    switch (type) {
+    case NV_OWNER_POLICY: /* TPM2B_DIGEST */
+    case NV_ENDORSEMENT_POLICY: /* TPM2B_DIGEST */
+    case NV_LOCKOUT_POLICY: /* TPM2B_DIGEST */
+    case NV_OWNER_AUTH: /* TPM2B_AUTH */
+    case NV_ENDORSEMENT_AUTH: /* TPM2B_AUTH */
+    case NV_LOCKOUT_AUTH: /* TPM2B_AUTH */
+    case NV_EP_SEED: /* TPM2B_SEED */
+    case NV_SP_SEED: /* TPM2B_SEED */
+    case NV_PP_SEED: /* TPM2B_SEED */
+    case NV_PH_PROOF: /* TPM2B_AUTH */
+    case NV_SH_PROOF: /* TPM2B_AUTH */
+    case NV_EH_PROOF: /* TPM2B_AUTH */
+        rc = _plat__NvMemoryReadTPM2B(s_reservedAddr[type], buffer);
+        assert(rc == TPM_RC_SUCCESS);
+        break;
+
+    case NV_DISABLE_CLEAR: /* BOOL */
+    case NV_PP_LIST: /* BYTE[] */
+    case NV_LOCKOUT_AUTH_ENABLED: /* BOOL */
+    case NV_AUDIT_COMMANDS: /* BYTE[] */
+        _plat__NvMemoryReadArray(s_reservedAddr[type], s_reservedSize[type], buffer);
+        break;
+
+    case NV_OWNER_ALG: /* TPMI_ALG_HASH */
+    case NV_ENDORSEMENT_ALG: /* TPMI_ALG_HASH */
+    case NV_LOCKOUT_ALG: /* TPMI_ALG_HASH */
+    case NV_ORDERLY: /* TPM_SU */
+    case NV_AUDIT_HASH_ALG: /* TPMI_ALG_HASH */
+        assert(s_reservedSize[type] == sizeof(UINT16));
+
+        _plat__NvMemoryReadUINT16(s_reservedAddr[type], (UINT16 *)buffer);
+        break;
+
+    case NV_TOTAL_RESET_COUNT:
+    case NV_AUDIT_COUNTER: /* UINT64 */
+        assert(s_reservedSize[type] == sizeof(UINT64));
+
+        _plat__NvMemoryReadUINT64(s_reservedAddr[type], (UINT64 *)buffer);
+        break;
+
+    case NV_RESET_COUNT: /* UINT32 */
+    case NV_FAILED_TRIES:
+    case NV_MAX_TRIES:
+    case NV_RECOVERY_TIME:
+    case NV_LOCKOUT_RECOVERY:
+    case NV_ALGORITHM_SET:
+    case NV_FIRMWARE_V1:
+    case NV_FIRMWARE_V2:
+        assert(s_reservedSize[type] == sizeof(UINT32));
+
+        _plat__NvMemoryReadUINT32(s_reservedAddr[type], (UINT32 *)buffer);
+        break;
+
+    case NV_PCR_POLICIES:
+        assert(s_reservedSize[type] == sizeof(PCR_POLICY));
+
+        _plat__NvMemoryReadPCR_POLICY(s_reservedAddr[type], (PCR_POLICY *)buffer);
+        break;
+
+    case NV_PCR_ALLOCATED:
+        assert(s_reservedSize[type] == sizeof(TPML_PCR_SELECTION));
+
+        _plat__NvMemoryReadTPML_PCR_SELECTION(s_reservedAddr[type],
+                                              (TPML_PCR_SELECTION *)buffer);
+        break;
+
+    case NV_ORDERLY_DATA:
+        assert(s_reservedSize[type] == sizeof(ORDERLY_DATA));
+
+        _plat__NvMemoryReadORDERLY_DATA(s_reservedAddr[type],
+                                        (ORDERLY_DATA *)buffer);
+        break;
+
+    case NV_STATE_CLEAR:
+        assert(s_reservedSize[type] == sizeof(STATE_CLEAR_DATA));
+
+        _plat__NvMemoryReadSTATE_CLEAR_DATA(s_reservedAddr[type],
+                                            (STATE_CLEAR_DATA *)buffer);
+        break;
+
+    case NV_STATE_RESET:
+        assert(s_reservedSize[type] == sizeof(STATE_RESET_DATA));
+
+        _plat__NvMemoryReadSTATE_RESET_DATA(s_reservedAddr[type],
+                                            (STATE_RESET_DATA *)buffer);
+        break;
+
+    case NV_RESERVE_LAST:
+        assert(FALSE);
+        break;
+    }
+
     return;
 }
 
@@ -719,10 +815,98 @@ NvWriteReserved(
 		void            *buffer         // IN: data buffer
 		)
 {
+    UINT16 written;
+    (void)written;
+
     // Input type should be valid
     pAssert(type >= 0 && type < NV_RESERVE_LAST);
-    
-    _plat__NvMemoryWrite(s_reservedAddr[type], s_reservedSize[type], buffer);
+
+    switch (type) {
+    case NV_OWNER_POLICY: /* TPM2B_DIGEST */
+    case NV_ENDORSEMENT_POLICY: /* TPM2B_DIGEST */
+    case NV_LOCKOUT_POLICY: /* TPM2B_DIGEST */
+    case NV_OWNER_AUTH: /* TPM2B_AUTH */
+    case NV_ENDORSEMENT_AUTH: /* TPM2B_AUTH */
+    case NV_LOCKOUT_AUTH: /* TPM2B_AUTH */
+    case NV_EP_SEED: /* TPM2B_SEED */
+    case NV_SP_SEED: /* TPM2B_SEED */
+    case NV_PP_SEED: /* TPM2B_SEED */
+    case NV_PH_PROOF: /* TPM2B_AUTH */
+    case NV_SH_PROOF: /* TPM2B_AUTH */
+    case NV_EH_PROOF: /* TPM2B_AUTH */
+        written = _plat__NvMemoryWriteTPM2B(s_reservedAddr[type], buffer);
+        assert(written == s_reservedSize[type]);
+        break;
+
+    case NV_DISABLE_CLEAR: /* BOOL */
+    case NV_PP_LIST: /* BYTE[] */
+    case NV_LOCKOUT_AUTH_ENABLED: /* BOOL */
+    case NV_AUDIT_COMMANDS: /* BYTE[] */
+        _plat__NvMemoryWriteArray(s_reservedAddr[type], s_reservedSize[type], buffer);
+        break;
+
+    case NV_OWNER_ALG: /* TPMI_ALG_HASH */
+    case NV_ENDORSEMENT_ALG: /* TPMI_ALG_HASH */
+    case NV_LOCKOUT_ALG: /* TPMI_ALG_HASH */
+    case NV_ORDERLY: /* TPM_SU */
+    case NV_AUDIT_HASH_ALG: /* TPMI_ALG_HASH */
+        assert(s_reservedSize[type] == sizeof(UINT16));
+
+        _plat__NvMemoryWriteUINT16(s_reservedAddr[type], (UINT16 *)buffer);
+        break;
+
+    case NV_TOTAL_RESET_COUNT:
+    case NV_AUDIT_COUNTER: /* UINT64 */
+        assert(s_reservedSize[type] == sizeof(UINT64));
+
+        _plat__NvMemoryWriteUINT64(s_reservedAddr[type], (UINT64 *)buffer);
+        break;
+
+    case NV_RESET_COUNT: /* UINT32 */
+    case NV_FAILED_TRIES:
+    case NV_MAX_TRIES:
+    case NV_RECOVERY_TIME:
+    case NV_LOCKOUT_RECOVERY:
+    case NV_ALGORITHM_SET:
+    case NV_FIRMWARE_V1:
+    case NV_FIRMWARE_V2:
+        assert(s_reservedSize[type] == sizeof(UINT32));
+
+        _plat__NvMemoryWriteUINT32(s_reservedAddr[type], (UINT32 *)buffer);
+        break;
+
+    case NV_PCR_POLICIES:
+        assert(s_reservedSize[type] == sizeof(PCR_POLICY));
+
+        _plat__NvMemoryWritePCR_POLICY(s_reservedAddr[type], (PCR_POLICY *)buffer);
+        break;
+
+    case NV_PCR_ALLOCATED:
+        assert(s_reservedSize[type] == sizeof(TPML_PCR_SELECTION));
+
+        _plat__NvMemoryWriteTPML_PCR_SELECTION(s_reservedAddr[type],
+                                               (TPML_PCR_SELECTION *)buffer);
+        break;
+
+    case NV_ORDERLY_DATA:
+        assert(s_reservedSize[type] == sizeof(ORDERLY_DATA));
+
+        _plat__NvMemoryWriteORDERLY_DATA(s_reservedAddr[type],
+                                         (ORDERLY_DATA *)buffer);
+        break;
+
+    case NV_STATE_CLEAR:
+        assert(s_reservedSize[type] == sizeof(STATE_CLEAR_DATA));
+
+        _plat__NvMemoryWriteSTATE_CLEAR_DATA(s_reservedAddr[type],
+                                             (STATE_CLEAR_DATA *)buffer);
+        break;
+
+    case NV_STATE_RESET:
+    case NV_RESERVE_LAST:
+        assert(FALSE);
+        break;
+    }
     
     // Set the flag that a NV write happens
     g_updateNV = TRUE;
@@ -833,7 +1017,7 @@ NvNextIndex(
     while((addr = NvNext(iter)) != 0)
 	{
 	    // Read handle
-	    _plat__NvMemoryRead(addr, sizeof(TPM_HANDLE), &handle);
+	    _plat__NvMemoryReadUINT32(addr, &handle);
 	    if(HandleGetType(handle) == TPM_HT_NV_INDEX)
 		return addr;
 	}
@@ -856,7 +1040,7 @@ NvNextEvict(
     while((addr = NvNext(iter)) != 0)
 	{
 	    // Read handle
-	    _plat__NvMemoryRead(addr, sizeof(TPM_HANDLE), &handle);
+	    _plat__NvMemoryReadUINT32(addr, &handle);
 	    if(HandleGetType(handle) == TPM_HT_PERSISTENT)
 		return addr;
 	}
@@ -883,7 +1067,7 @@ NvFindHandle(
 	{
 	    TPM_HANDLE          entityHandle;
 	    // Read handle
-	    _plat__NvMemoryRead(addr, sizeof(TPM_HANDLE), &entityHandle);
+	    _plat__NvMemoryReadUINT32(addr, &entityHandle);
 	    if(entityHandle == handle)
 		return addr;
 	}
@@ -928,7 +1112,7 @@ NvStateSave(
     // Write RAM backed NV Index info to NV
     // No need to save s_ramIndexSize because we save it to NV whenever it is
     // updated.
-    _plat__NvMemoryWrite(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
+    _plat__NvMemoryWriteArray(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
     
     // Set the flag so that an NV write happens before the command completes.
     g_updateNV = TRUE;
@@ -955,9 +1139,9 @@ NvEntityStartup(
     UINT32              currentAddr;        // offset points to the current entity
     
     // Restore RAM index data
-    _plat__NvMemoryRead(s_ramIndexSizeAddr, sizeof(UINT32), &s_ramIndexSize);
-    _plat__NvMemoryRead(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
-    
+    _plat__NvMemoryReadUINT32(s_ramIndexSizeAddr, &s_ramIndexSize);
+    _plat__NvMemoryReadArray(s_ramIndexAddr, RAM_INDEX_SPACE, s_ramIndex);
+
     // If recovering from state save, do nothing
     if(type == SU_RESUME)
 	return;
@@ -972,7 +1156,7 @@ NvEntityStartup(
 	    indexAddr = currentAddr + sizeof(TPM_HANDLE);
 	    
 	    // Read NV Index info structure
-	    _plat__NvMemoryRead(indexAddr, sizeof(NV_INDEX), &nvIndex);
+	    _plat__NvMemoryReadNV_INDEX(indexAddr, &nvIndex);
 	    attributes = nvIndex.publicArea.attributes;
 	    
 	    // Clear read/write lock
@@ -1006,7 +1190,7 @@ NvEntityStartup(
 	    if(*((UINT32 *)&attributes) != *((UINT32 *)&nvIndex.publicArea.attributes))
 	        {
 	            nvIndex.publicArea.attributes = attributes;
-	            _plat__NvMemoryWrite(indexAddr, sizeof(NV_INDEX), &nvIndex);
+	            _plat__NvMemoryWriteNV_INDEX(indexAddr, &nvIndex);
 		    
 	            // Set the flag that a NV write happens
 	            g_updateNV = TRUE;
@@ -1022,7 +1206,7 @@ NvEntityStartup(
 			    UINT64              counter;
 			    
 			    // Read NV handle
-			    _plat__NvMemoryRead(currentAddr, sizeof(TPM_HANDLE), &nvHandle);
+			    _plat__NvMemoryReadUINT32(currentAddr, &nvHandle);
 			    
 			    // Read the counter value saved to NV upon the last roll over.
 			    // Do not use RAM backed storage for this once.
@@ -1033,6 +1217,9 @@ NvEntityStartup(
 			    // Set the lower bits of counter to 1's
 			    counter |= MAX_ORDERLY_COUNT;
 			    
+			    // NvWriteIndexData does not convert back to big endian
+			    counter = htobe64(counter);
+
 			    // Write back to RAM
 			    NvWriteIndexData(nvHandle, &nvIndex, 0, sizeof(counter), &counter);
 			    
@@ -1106,8 +1293,7 @@ NvIndexIsAccessible(
 	return TPM_RC_HANDLE;
     
     // Read NV Index info structure
-    _plat__NvMemoryRead(entityAddr + sizeof(TPM_HANDLE), sizeof(NV_INDEX),
-			&nvIndex);
+    _plat__NvMemoryReadNV_INDEX(entityAddr + sizeof(TPM_HANDLE), &nvIndex);
     
     if(gc.shEnable == FALSE || gc.phEnableNV == FALSE)
 	{
@@ -1198,9 +1384,8 @@ NvGetEvictObject(
 	result = TPM_RC_HANDLE;
     else
 	// Read evict object
-	_plat__NvMemoryRead(entityAddr + sizeof(TPM_HANDLE),
-			    sizeof(OBJECT),
-			    object);
+	_plat__NvMemoryReadOBJECT(entityAddr + sizeof(TPM_HANDLE),
+			          object);
     
     // whether there is an error or not, make sure that the evict
     // status of the object is set so that the slot will get freed on exit
@@ -1234,8 +1419,7 @@ NvGetIndexInfo(
     
     // This implementation uses the default format so just
     // read the data in
-    _plat__NvMemoryRead(entityAddr + sizeof(TPM_HANDLE), sizeof(NV_INDEX),
-			nvIndex);
+    _plat__NvMemoryReadNV_INDEX(entityAddr + sizeof(TPM_HANDLE), nvIndex);
     
     return;
 }
@@ -1266,7 +1450,7 @@ NvInitialCounter(
 	    NV_INDEX            nvIndex;
 	    
 	    // Read NV handle
-	    _plat__NvMemoryRead(currentAddr, sizeof(TPM_HANDLE), &nvHandle);
+	    _plat__NvMemoryReadUINT32(currentAddr, &nvHandle);
 	    
 	    // Get NV Index
 	    NvGetIndexInfo(nvHandle, &nvIndex);
@@ -1341,7 +1525,7 @@ NvGetIndexData(
 		    // Skip NV Index info, read data buffer
 		    entityAddr += sizeof(TPM_HANDLE) + sizeof(NV_INDEX) + offset;
 		    // Read the data
-		    _plat__NvMemoryRead(entityAddr, size, data);
+		    _plat__NvMemoryReadArray(entityAddr, size, data);
 		}
 	}
     return;
@@ -1377,6 +1561,7 @@ NvGetIntIndexData(
 	    // Get data from RAM buffer
 	    ramAddr = NvGetRAMIndexOffset(handle);
 	    MemoryCopy(data, s_ramIndex + ramAddr, sizeof(*data), sizeof(*data));
+	    *data = be64toh(*data);
 	}
     else
 	{
@@ -1385,9 +1570,9 @@ NvGetIntIndexData(
 	    
 	    // Get data from NV
 	    // Skip NV Index info, read data buffer
-	    _plat__NvMemoryRead(
+	    _plat__NvMemoryReadUINT64(
 				entityAddr + sizeof(TPM_HANDLE) + sizeof(NV_INDEX),
-				sizeof(UINT64), data);
+				data);
 	}
     
     return;
@@ -1423,7 +1608,7 @@ NvWriteIndexInfo(
 	    result = NvIsAvailable();
 	    if(result != TPM_RC_SUCCESS)
 		return result;
-	    _plat__NvMemoryWrite(entryAddr, sizeof(NV_INDEX), nvIndex);
+	    _plat__NvMemoryWriteNV_INDEX(entryAddr, nvIndex);
 	    g_updateNV = TRUE;
 	}
     return TPM_RC_SUCCESS;
@@ -1497,7 +1682,7 @@ NvWriteIndexData(
 		    result = NvIsAvailable();
 		    if(result != TPM_RC_SUCCESS)
 			return result;
-		    _plat__NvMemoryWrite(entryAddr, size, data);
+		    _plat__NvMemoryWriteArray(entryAddr, size, data);
 		    g_updateNV = TRUE;
 		}
 	}
@@ -1554,11 +1739,11 @@ NvDefineIndex(
     // The buffer to be written to NV memory
     BYTE            nvBuffer[sizeof(TPM_HANDLE) + sizeof(NV_INDEX)];
     
-    NV_INDEX        *nvIndex;           // a pointer to the NV_INDEX data in
     //   nvBuffer
     UINT16          entrySize;          // size of entry
 
-    TPM_HANDLE      *tpm_handle;
+    BYTE            *buffer;
+    UINT16          written;
     
     entrySize = sizeof(TPM_HANDLE) + sizeof(NV_INDEX) + publicArea->dataSize;
     
@@ -1574,15 +1759,12 @@ NvDefineIndex(
        && !NvTestRAMSpace(publicArea->dataSize))
 	return TPM_RC_NV_SPACE;
     
-    // Copy input value to nvBuffer
-    // Copy handle
-    tpm_handle = (TPM_HANDLE *)nvBuffer;
-    *tpm_handle = publicArea->nvIndex;
-    
-    // Copy NV_INDEX
-    nvIndex = (NV_INDEX *) (nvBuffer + sizeof(TPM_HANDLE));
-    nvIndex->publicArea = *publicArea;
-    nvIndex->authValue = *authValue;
+    buffer = nvBuffer;
+    written = TPM_HANDLE_Marshal(&publicArea->nvIndex, &buffer, NULL);
+    written += TPMS_NV_PUBLIC_Marshal(publicArea, &buffer, NULL);
+    written += TPM2B_AUTH_Marshal(authValue, &buffer, NULL);
+    assert(written == sizeof(nvBuffer));
+    (void)written;
     
     // Add index to NV memory
     NvAdd(entrySize, sizeof(TPM_HANDLE) + sizeof(NV_INDEX), nvBuffer);
@@ -1609,11 +1791,12 @@ NvAddEvictObject(
     // The buffer to be written to NV memory
     BYTE            nvBuffer[sizeof(TPM_HANDLE) + sizeof(OBJECT)];
     
-    OBJECT          *nvObject;          // a pointer to the OBJECT data in
     // nvBuffer
     UINT16          entrySize;          // size of entry
     
-    TPM_HANDLE      *tpm_handle;
+    OBJECT          myObject;
+    BYTE            *buffer;
+    UINT16          written;
 
     // evict handle type should match the object hierarchy
     pAssert(   (   NvIsPlatformPersistentHandle(evictHandle)
@@ -1636,18 +1819,16 @@ NvAddEvictObject(
     if(!NvIsUndefinedEvictHandle(evictHandle))
 	return TPM_RC_NV_DEFINED;
     
-    // Copy evict object to nvBuffer
-    // Copy handle
-    tpm_handle = (TPM_HANDLE *) nvBuffer;
-    *tpm_handle = evictHandle;
-    
-    // Copy OBJECT
-    nvObject = (OBJECT *) (nvBuffer + sizeof(TPM_HANDLE));
-    *nvObject = *object;
-    
     // Set evict attribute and handle
-    nvObject->attributes.evict = SET;
-    nvObject->evictHandle = evictHandle;
+    myObject = *object;
+    myObject.attributes.evict = SET;
+    myObject.evictHandle = evictHandle;
+
+    buffer = nvBuffer;
+    written = TPM_HANDLE_Marshal(&evictHandle, &buffer, NULL);
+    written += OBJECT_Marshal(&myObject, &buffer, NULL);
+    assert(written == sizeof(nvBuffer));
+    (void)written;
     
     // Add evict to NV memory
     NvAdd(entrySize, entrySize, nvBuffer);
@@ -1675,8 +1856,8 @@ NvDeleteEntity(
 	    NV_INDEX    nvIndex;
 	    
 	    // Read the NV Index info
-	    _plat__NvMemoryRead(entityAddr + sizeof(TPM_HANDLE), sizeof(NV_INDEX),
-				&nvIndex);
+	    _plat__NvMemoryReadNV_INDEX(entityAddr + sizeof(TPM_HANDLE),
+				        &nvIndex);
 	    
 	    // If the entity to be deleted is a counter with the maximum counter
 	    // value, record it in NV memory
@@ -1718,7 +1899,7 @@ NvFlushHierarchy(
 	    TPM_HANDLE      entityHandle;
 	    
 	    // Read handle information.
-	    _plat__NvMemoryRead(currentAddr, sizeof(TPM_HANDLE), &entityHandle);
+	    _plat__NvMemoryReadUINT32(currentAddr, &entityHandle);
 	    
 	    if(HandleGetType(entityHandle) == TPM_HT_NV_INDEX)
 	        {
@@ -1729,8 +1910,8 @@ NvFlushHierarchy(
 	            // flushed
 	            if(hierarchy == TPM_RH_ENDORSEMENT || hierarchy == TPM_RH_PLATFORM)
 	                continue;
-	            _plat__NvMemoryRead(currentAddr + sizeof(TPM_HANDLE),
-	                                sizeof(NV_INDEX), &nvIndex);
+	            _plat__NvMemoryReadNV_INDEX(currentAddr + sizeof(TPM_HANDLE),
+	                                        &nvIndex);
 		    
 	            // For storage hierarchy, flush OwnerCreated index
 	            if(  nvIndex.publicArea.attributes.TPMA_NV_PLATFORMCREATE == CLEAR)
@@ -1797,8 +1978,8 @@ NvSetGlobalLock(
 	    NV_INDEX    nvIndex;
 	    
 	    // Read the index data
-	    _plat__NvMemoryRead(currentAddr + sizeof(TPM_HANDLE),
-				sizeof(NV_INDEX), &nvIndex);
+	    _plat__NvMemoryReadNV_INDEX(currentAddr + sizeof(TPM_HANDLE),
+				        &nvIndex);
 	    
 	    // See if it should be locked
 	    if(nvIndex.publicArea.attributes.TPMA_NV_GLOBALLOCK == SET)
@@ -1807,8 +1988,8 @@ NvSetGlobalLock(
 	            // if so, lock it
 	            nvIndex.publicArea.attributes.TPMA_NV_WRITELOCKED = SET;
 		    
-	            _plat__NvMemoryWrite(currentAddr + sizeof(TPM_HANDLE),
-	                                 sizeof(NV_INDEX), &nvIndex);
+	            _plat__NvMemoryWriteNV_INDEX(currentAddr + sizeof(TPM_HANDLE),
+	                                         &nvIndex);
 	            // Set the flag that a NV write happens
 	            g_updateNV = TRUE;
 	        }
@@ -1898,7 +2079,7 @@ NvCapGetPersistent(
 	    TPM_HANDLE      entityHandle;
 	    
 	    // Read handle information.
-	    _plat__NvMemoryRead(currentAddr, sizeof(TPM_HANDLE), &entityHandle);
+	    _plat__NvMemoryReadUINT32(currentAddr, &entityHandle);
 	    
 	    // Ignore persistent handles that have values less than the input handle
 	    if(entityHandle < handle)
@@ -1954,7 +2135,7 @@ NvCapGetIndex(
 	    TPM_HANDLE      entityHandle;
 	    
 	    // Read handle information.
-	    _plat__NvMemoryRead(currentAddr, sizeof(TPM_HANDLE), &entityHandle);
+	    _plat__NvMemoryReadUINT32(currentAddr, &entityHandle);
 	    
 	    // Ignore index handles that have values less than the 'handle'
 	    if(entityHandle < handle)
@@ -2045,8 +2226,8 @@ NvCapGetCounterNumber(
 	    NV_INDEX    nvIndex;
 	    
 	    // Get NV Index info
-	    _plat__NvMemoryRead(currentAddr + sizeof(TPM_HANDLE),
-				sizeof(NV_INDEX), &nvIndex);
+	    _plat__NvMemoryReadNV_INDEX(currentAddr + sizeof(TPM_HANDLE),
+				        &nvIndex);
 	    if(IsNvCounterIndex(nvIndex.publicArea.attributes))
 		num++;
 	}
