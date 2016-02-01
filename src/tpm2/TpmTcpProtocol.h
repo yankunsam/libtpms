@@ -157,6 +157,11 @@ void _rpc__Signal_CancelOn(void);
 void _rpc__Signal_CancelOff(void);
 void _rpc__Signal_NvOn(void);
 void _rpc__Signal_NvOff(void);
+// Extensions:
+void _rpc__Signal_SetTPMEstablished(void);
+BOOL _rpc__Signal_GetTPMEstablished(void);
+void _rpc__Signal_ResetTPMEstablished(void);
+
 void _rpc__Shutdown(void);
 
 BOOL _rpc__InjectEPS(
