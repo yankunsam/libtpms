@@ -210,10 +210,12 @@ TpmFail(
 	int     	code
 	)
 {
+    UINT32     *failFuncp;
     // Save the values that indicate where the error occurred.
     // On a 64-bit machine, this may truncate the address of the string
     // of the function name where the error occurred.
-    s_failFunction = *(UINT32*)&function;
+    failFuncp = (UINT32 *)&function;
+    s_failFunction = *failFuncp;
     s_failLine = line;
     s_failCode = code;
     

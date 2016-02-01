@@ -1014,12 +1014,15 @@ _cpri__GenerateKeyRSA(
 
 #else
 
+#if 0
 static void noFunction(
 		       void
 		       )
 {
     pAssert(1);
 }
+#endif
+
 #endif              //%
 
 #endif // TPM_ALG_RSA

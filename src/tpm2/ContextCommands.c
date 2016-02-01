@@ -304,7 +304,7 @@ TPM2_ContextLoad(
     // Make sure that the context blob has enough space for the fingerprint. This
     // is elastic pants to go with the belt and suspenders we already have to make
     // sure that the context is complete and untampered.
-    if(size < sizeof(in->context.sequence))
+    if(size < (INT32)sizeof(in->context.sequence))
 	return TPM_RCS_SIZE + RC_ContextLoad_context;
 
     // After unmarshaling the integrity value, 'buffer' is pointing at the first

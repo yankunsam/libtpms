@@ -481,7 +481,11 @@ NvGetRAMIndexOffset(
 	{
 	    TPMI_RH_NV_INDEX    currHandle;
 	    UINT32              currSize;
-	    currHandle = * (TPM_HANDLE *) &s_ramIndex[currAddr + sizeof(UINT32)];
+	    TPM_HANDLE          *tpm_handle;
+	    UINT32              *currSizep;
+
+	    tpm_handle = (TPM_HANDLE *)&s_ramIndex[currAddr + sizeof(UINT32)];
+	    currHandle = *tpm_handle;
 	    
 	    // Found a match
 	    if(currHandle == handle)
@@ -489,7 +493,8 @@ NvGetRAMIndexOffset(
 		// data buffer follows the handle and size field
 		break;
 	    
-	    currSize = * (UINT32 *) &s_ramIndex[currAddr];
+	    currSizep = (UINT32 *) &s_ramIndex[currAddr];
+	    currSize = *currSizep;
 	    currAddr += sizeof(UINT32) + currSize;
 	}
     
@@ -508,9 +513,14 @@ NvAddRAM(
 	 UINT32               size           // IN: size of data
 	 )
 {
+    UINT32           *sizep;
+    TPMI_RH_NV_INDEX *rhindexp;
     // Add data space at the end of reserved RAM buffer
-    * (UINT32 *) &s_ramIndex[s_ramIndexSize] = size + sizeof(TPMI_RH_NV_INDEX);
-    * (TPMI_RH_NV_INDEX *) &s_ramIndex[s_ramIndexSize + sizeof(UINT32)] = handle;
+    sizep = (UINT32 *) &s_ramIndex[s_ramIndexSize];
+    *sizep  = size + sizeof(TPMI_RH_NV_INDEX);
+
+    rhindexp = (TPMI_RH_NV_INDEX *) &s_ramIndex[s_ramIndexSize + sizeof(UINT32)];
+    *rhindexp  = handle;
     s_ramIndexSize += sizeof(UINT32) + sizeof(TPMI_RH_NV_INDEX) + size;
     
     pAssert(s_ramIndexSize <= RAM_INDEX_SPACE);
@@ -539,6 +549,7 @@ NvDeleteRAM(
     UINT32          nodeOffset;
     UINT32          nextNode;
     UINT32          size;
+    UINT32          *sizep;
     
     nodeOffset = NvGetRAMIndexOffset(handle);
     
@@ -546,7 +557,8 @@ NvDeleteRAM(
     nodeOffset -= sizeof(UINT32) + sizeof(TPMI_RH_NV_INDEX);
     
     // Get node size
-    size = * (UINT32 *) &s_ramIndex[nodeOffset];
+    sizep = (UINT32 *) &s_ramIndex[nodeOffset];
+    size = *sizep;
     
     // Get the offset of next node
     nextNode = nodeOffset + sizeof(UINT32) + size;
@@ -1545,6 +1557,8 @@ NvDefineIndex(
     NV_INDEX        *nvIndex;           // a pointer to the NV_INDEX data in
     //   nvBuffer
     UINT16          entrySize;          // size of entry
+
+    TPM_HANDLE      *tpm_handle;
     
     entrySize = sizeof(TPM_HANDLE) + sizeof(NV_INDEX) + publicArea->dataSize;
     
@@ -1562,7 +1576,8 @@ NvDefineIndex(
     
     // Copy input value to nvBuffer
     // Copy handle
-    * (TPM_HANDLE *) nvBuffer = publicArea->nvIndex;
+    tpm_handle = (TPM_HANDLE *)nvBuffer;
+    *tpm_handle = publicArea->nvIndex;
     
     // Copy NV_INDEX
     nvIndex = (NV_INDEX *) (nvBuffer + sizeof(TPM_HANDLE));
@@ -1598,6 +1613,8 @@ NvAddEvictObject(
     // nvBuffer
     UINT16          entrySize;          // size of entry
     
+    TPM_HANDLE      *tpm_handle;
+
     // evict handle type should match the object hierarchy
     pAssert(   (   NvIsPlatformPersistentHandle(evictHandle)
 		   && object->attributes.ppsHierarchy == SET)
@@ -1621,7 +1638,8 @@ NvAddEvictObject(
     
     // Copy evict object to nvBuffer
     // Copy handle
-    * (TPM_HANDLE *) nvBuffer = evictHandle;
+    tpm_handle = (TPM_HANDLE *) nvBuffer;
+    *tpm_handle = evictHandle;
     
     // Copy OBJECT
     nvObject = (OBJECT *) (nvBuffer + sizeof(TPM_HANDLE));

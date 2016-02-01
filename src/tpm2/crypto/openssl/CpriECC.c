@@ -787,7 +787,7 @@ _cpri__GenerateKeyEcc(
 		      )
 {
     const ECC_CURVE_DATA    *curveData = GetCurveData(curveId);
-    INT16                    keySizeInBytes;
+    INT16                    keySizeInBytes = INT16_MAX;
     UINT32                   count = 0;
     CRYPT_RESULT             retVal = CRYPT_SUCCESS;
     UINT16                   hLen = _cpri__GetDigestSize(hashAlg);
@@ -1928,7 +1928,7 @@ _cpri__ValidateSignatureEcc(
 			    TPM2B                   *digest         // IN: the digest that was signed
 			    )
 {
-    CRYPT_RESULT            retVal;
+    CRYPT_RESULT            retVal = CRYPT_FAIL;
     
     // Make sure the scheme is supported, otherwise, the other inputs could be
     // garbage

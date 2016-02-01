@@ -84,7 +84,9 @@ int         s_entropyFailure;
 #ifdef TPM_RNG_FOR_DEBUG
 TPM2B_TYPE(B64, 64);
 TPM2B_B64       randomSeed = {
-    64, "Special version of the RNG to be used only during TPM debug!!!!"};
+    .t.size = 64,
+    .t.buffer = "Special version of the RNG to be used only during TPM debug!!!!"
+};
 static UINT32   rngCounter = 923;
 #endif
 
@@ -230,7 +232,7 @@ _cpri__DrbgGetPutState(
     else
 	{
 	    // Output buffer has to be big enough to hold the state
-	    pAssert(buffer != NULL && bufferSize >= sizeof(g_drbgState));
+	    pAssert(buffer != NULL && bufferSize >= (int)sizeof(g_drbgState));
 	    
 	    // Return the current state of the DRBG
 	    memcpy(buffer, &g_drbgState, sizeof(g_drbgState));
