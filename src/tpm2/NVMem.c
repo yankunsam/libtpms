@@ -77,6 +77,11 @@
 #include "TpmError.h"
 #include "assert.h"
 
+#include "tpm_library_intern.h"
+#include "tpm_error.h"
+#include "tpm_nvfilename.h"
+#include "tpm_memory.h"
+
 // C.6.3.	Functions
 // C.6.3.1.	_plat__NvErrors()
 // This function is used by the simulator to set the error flags in the NV subsystem to simulate an error in the NV loading process
@@ -116,6 +121,48 @@ _plat__NVEnable(
     // Start assuming everything is OK
     s_NV_unrecoverable = FALSE;
     s_NV_recoverable = FALSE;
+
+#ifdef TPM_LIBTPMS_CALLBACKS
+    struct libtpms_callbacks *cbs = TPMLIB_GetCallbacks();
+
+    if (cbs->tpm_nvram_loaddata) {
+        unsigned char *data = NULL;
+        uint32_t length = 0;
+        uint32_t tpm_number = 0;
+        const char *name = TPM_PERMANENT_ALL_NAME;
+        TPM_RESULT ret;
+
+        ret = cbs->tpm_nvram_loaddata(&data, &length, tpm_number, name);
+        switch (ret) {
+        case TPM_RETRY:
+            if (!cbs->tpm_nvram_storedata) {
+                return -1;
+            }
+            memset(s_NV, 0, NV_MEMORY_SIZE);
+            /* first time; no file exists */
+            ret = cbs->tpm_nvram_storedata(s_NV, NV_MEMORY_SIZE,
+                                           tpm_number, name);
+            if (ret == TPM_SUCCESS) {
+                return 0;
+            }
+            return -1;
+
+        case TPM_SUCCESS:
+            /* got the data -- copy them to final dest. */
+            if (length != NV_MEMORY_SIZE) {
+                TPM_Free(data);
+                return -1;
+            }
+            memcpy(s_NV, data, length);
+            TPM_Free(data);
+            return 0;
+
+        case TPM_FAIL:
+        default:
+            return -1;
+        }
+    }
+#endif /* TPM_LIBTPMS_CALLBACKS */
     
 #ifdef FILE_BACKED_NV
     
@@ -177,6 +224,13 @@ _plat__NVDisable(
 		 void
 		 )
 {
+#ifdef TPM_LIBTPMS_CALLBACKS
+    struct libtpms_callbacks *cbs = TPMLIB_GetCallbacks();
+
+    if (cbs->tpm_nvram_loaddata)
+        return;
+#endif /* TPM_LIBTPMS_CALLBACKS */
+
 #ifdef  FILE_BACKED_NV
     
     assert(s_NVFile != NULL);
@@ -206,11 +260,20 @@ _plat__IsNvAvailable(
     if(!s_NvIsAvailable)
 	return 1;
     
+#ifdef TPM_LIBTPMS_CALLBACKS
+    struct libtpms_callbacks *cbs = TPMLIB_GetCallbacks();
+
+    if (cbs->tpm_nvram_loaddata &&
+        cbs->tpm_nvram_storedata) {
+        return 0;
+    }
+#endif /* TPM_LIBTPMS_CALLBACKS */
+
 #ifdef FILE_BACKED_NV
     if(s_NVFile == NULL)
 	return 1;
 #endif
-    
+
     return 0;
     
 }
@@ -313,6 +376,23 @@ _plat__NvCommit(
 		void
 		)
 {
+#ifdef TPM_LIBTPMS_CALLBACKS
+    struct libtpms_callbacks *cbs = TPMLIB_GetCallbacks();
+
+    if (cbs->tpm_nvram_storedata) {
+        uint32_t tpm_number = 0;
+        const char *name = TPM_PERMANENT_ALL_NAME;
+        TPM_RESULT ret;
+
+        ret = cbs->tpm_nvram_storedata(s_NV, NV_MEMORY_SIZE,
+                                       tpm_number, name);
+        if (ret == TPM_SUCCESS)
+            return 0;
+
+        return -1;
+    }
+#endif /* TPM_LIBTPMS_CALLBACKS */
+
 #ifdef FILE_BACKED_NV
     // If NV file is not available, return failure
     if(s_NVFile == NULL)

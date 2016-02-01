@@ -346,8 +346,10 @@
 #define PROOF_SIZE			CONTEXT_INTEGRITY_HASH_SIZE	/* size of proof value in octets */
 #define NV_CLOCK_UPDATE_INTERVAL	12	/* the update interval expressed as a power of 2 seconds */
 #define NUM_POLICY_PCR			1	/* number of PCR that allow policy/auth */
-#define MAX_COMMAND_SIZE		4096	/* maximum size of a command */
-#define MAX_RESPONSE_SIZE		4096	/* maximum size of a response */
+//#define MAX_COMMAND_SIZE		4096	/* maximum size of a command */
+#define MAX_COMMAND_SIZE                TPM_BUFFER_MAX
+//#define MAX_RESPONSE_SIZE		4096	/* maximum size of a response */
+#define MAX_RESPONSE_SIZE               TPM_BUFFER_MAX
 #define ORDERLY_BITS			8	/* number between 1 and 32 inclusive */
 #define MAX_ORDERLY_COUNT               ((1<<ORDERLY_BITS)-1)	/* maximum count of orderly counter
 								   before NV is updated.  This must

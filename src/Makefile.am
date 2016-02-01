@@ -159,6 +159,8 @@ endif # LIBTPMS_USE_FREEBL
 # TPM2
 #
 
+if WITH_TPM2
+
 noinst_LTLIBRARIES += libtpms_tpm2.la
 
 libtpms_la_LIBADD += libtpms_tpm2.la
@@ -175,6 +177,8 @@ libtpms_tpm2_la_CFLAGS = $(common_CFLAGS) \
 libtpms_tpm2_la_CFLAGS += -DTPM_BITFIELD_LE
 libtpms_tpm2_la_CFLAGS += -DTPM_POSIX
 libtpms_tpm2_la_CFLAGS += -DSPEC_VERSION=122
+# build with libtpms callback support
+libtpms_tpm2_la_CFLAGS += -DTPM_LIBTPMS_CALLBACKS
 
 libtpms_tpm2_la_SOURCES = \
 	tpm2/crypto/CpriCryptPri.c \
@@ -247,7 +251,9 @@ libtpms_tpm2_la_SOURCES = \
 	tpm2/TPMCmdp.c \
 	tpm2/TpmFail.c \
 	tpm2/Unique.c \
-	tpm2/Unmarshal.c
+	tpm2/Unmarshal.c \
+	tpm_tpm2_interface.c \
+	tpm_tpm2_tis.c
 
 noinst_HEADERS += \
 	tpm2/crypto/CpriCryptPri_fp.h \
@@ -449,6 +455,24 @@ libtpms_tpm2_la_CFLAGS += \
 
 endif # LIBTPMS_USE_OPENSSL
 
+# some of the original TPM2 files have been modified; in case of an update
+# we do not want to loose these modifications
+check:
+	n=`grep "TPM_LIBTPMS_CALLBACK" $(libtpms_tpm2_la_SOURCES) | wc -l`; \
+	exp=16; \
+	if test $$n -ne $$exp; then \
+		echo "TPM_LIBTPMS_CALLBACK occurrence has changed to $$n from $$exp"; \
+		exit 1; \
+	fi; \
+	n=`grep TPM_BUFFER_MAX tpm2/Implementation.h | grep -E "^#define" | wc -l`; \
+	exp=2; \
+	if test $$n -ne $$exp; then \
+		echo "Lost patches to tpm2/Implementation.h ?"; \
+		exit 1; \
+	fi
+
+endif # WITH_TPM2
+
 #
 # Library API layer
 #
@@ -478,3 +502,11 @@ EXTRA_DIST = \
 	tpm12/tpm_crypto_freebl.c \
 	tpm12/tpm_crypto.c \
 	libtpms.syms
+
+# always add TPM2 file as well
+EXTRA_DIST += \
+	tpm2/CpriECC.c \
+	tpm2/CpriHash.c \
+	tpm2/CpriHashData.c \
+	tpm2/CpriDataEcc.c \
+	tpm2/CommandAttributeData.c

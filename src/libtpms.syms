@@ -20,3 +20,12 @@ LIBTPMS_0.5.1 {
     local:
 	*;
 };
+
+LIBTPMS_0_6.0 {
+    global:
+	TPM_IO_TpmEstablished_Reset;
+	TPMLIB_CancelCommand;
+	TPMLIB_ChooseTPMVersion;
+    local:
+        *;
+} LIBTPMS_0.5.1;

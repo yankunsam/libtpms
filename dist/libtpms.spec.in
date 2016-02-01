@@ -5,10 +5,10 @@
 %define release   1
 
 # Valid crypto subsystems are 'freebl' and 'openssl'
-%define crypto_subsystem  freebl
+%define crypto_subsystem  openssl
 
 # Valid build types are 'production' or 'debug'
-%define build_type  production
+%define build_type  debug
 
 Summary: Library providing Trusted Platform Module (TPM) functionality
 Name:           %{name}
@@ -81,7 +81,11 @@ Libtpms header files and documentation.
 %endif
 
 ./bootstrap.sh
+%if %{build_type} == debug
+CFLAGS=-O0
+%endif
 %configure \
+	--with-tpm2 \
         --disable-static \
         --prefix=/usr \
         --libdir=%{_libdir} \
