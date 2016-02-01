@@ -103,10 +103,12 @@ static const HANDLE_UNMARSHAL_TABLE handleUnmarshalTable [] = {
     {TPM_CC_Import, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_RSA_Encrypt, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_RSA_Decrypt, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
+#ifdef TPM_ALG_ECC
     {TPM_CC_ECDH_KeyGen, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_ECDH_ZGen, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_ECC_Parameters, NULL, NO, NULL, NO, NULL, NO},
     {TPM_CC_ZGen_2Phase, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
+#endif
     {TPM_CC_EncryptDecrypt, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_Hash, NULL, NO, NULL, NO, NULL, NO},
     {TPM_CC_HMAC, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
@@ -123,8 +125,10 @@ static const HANDLE_UNMARSHAL_TABLE handleUnmarshalTable [] = {
     {TPM_CC_GetSessionAuditDigest, (UnmarshalFunction_t)TPMI_RH_ENDORSEMENT_Unmarshal, NO, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, YES, (UnmarshalFunction_t)TPMI_SH_HMAC_Unmarshal, NO},
     {TPM_CC_GetCommandAuditDigest, (UnmarshalFunction_t)TPMI_RH_ENDORSEMENT_Unmarshal, NO, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, YES, NULL, NO},
     {TPM_CC_GetTime, (UnmarshalFunction_t)TPMI_RH_ENDORSEMENT_Unmarshal, NO, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, YES, NULL, NO},
+#ifdef TPM_ALG_ECC
     {TPM_CC_Commit, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_EC_Ephemeral, NULL, NO, NULL, NO, NULL, NO},
+#endif
     {TPM_CC_VerifySignature, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_Sign, (UnmarshalFunction_t)TPMI_DH_OBJECT_Unmarshal, NO, NULL, NO, NULL, NO},
     {TPM_CC_SetCommandCodeAuditStatus, (UnmarshalFunction_t)TPMI_RH_PROVISION_Unmarshal, NO, NULL, NO, NULL, NO},

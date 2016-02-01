@@ -68,6 +68,8 @@
 #ifndef _CRYPT_PRI_H
 #define _CRYPT_PRI_H
 
+#include "config.h"
+
 #include    <stddef.h>
 #include    "TpmBuildSwitches.h"
 #include    "BaseTypes.h"
@@ -133,7 +135,12 @@ typedef struct {
 // structure needs to start on an alignment boundary and be an even multiple of the alignment
 
 #define ALIGNED_SIZE(x, b) ((((x) + (b) - 1) / (b)) * (b))
+#ifdef USE_OPENSSL_CRYPTO_LIBRARY
 #define MAX_HASH_STATE_SIZE ((2 * MAX_HASH_BLOCK_SIZE) + 16)
+#endif
+#ifdef USE_FREEBL_CRYPTO_LIBRARY
+#define MAX_HASH_STATE_SIZE (728)
+#endif
 #define MAX_HASH_STATE_SIZE_ALIGNED					\
     ALIGNED_SIZE(MAX_HASH_STATE_SIZE, CRYPTO_ALIGNMENT)
 

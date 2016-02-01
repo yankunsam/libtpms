@@ -4,6 +4,8 @@
 # For the license, see the LICENSE file in the root directory.
 #
 
+AUTOMAKE_OPTIONS = subdir-objects
+
 lib_LTLIBRARIES=libtpms.la
 
 common_CFLAGS = -include tpm_library_conf.h \
@@ -432,6 +434,30 @@ noinst_HEADERS += \
 	tpm2/VerifySignature_fp.h \
 	tpm2/ZGen_2Phase_fp.h
 
+if LIBTPMS_USE_FREEBL
+
+libtpms_tpm2_la_SOURCES += \
+	tpm2/crypto/freebl/bn.c \
+	tpm2/crypto/freebl/CpriDataEcc.c \
+	tpm2/crypto/freebl/CpriECC.c \
+	tpm2/crypto/freebl/CpriHash.c \
+	tpm2/crypto/freebl/CpriRNG.c \
+	tpm2/crypto/freebl/CpriRSA.c \
+	tpm2/crypto/freebl/CpriSym.c \
+	tpm2/crypto/freebl/MathFunctions.c \
+	tpm2/crypto/freebl/RSAKeySieve.c
+
+noinst_HEADERS += \
+	tpm2/crypto/freebl/FreeBLCryptoEngine.h
+
+libtpms_tpm2_la_CFLAGS += \
+	-I tpm2 \
+	-I tpm2/crypto \
+	-I tpm2/crypto/freebl \
+	-DALG_ECC=0
+
+else # LIBTPMS_USE_FREEBL
+
 if LIBTPMS_USE_OPENSSL
 
 libtpms_tpm2_la_SOURCES += \
@@ -470,6 +496,8 @@ check:
 		echo "Lost patches to tpm2/Implementation.h ?"; \
 		exit 1; \
 	fi
+
+endif # LIBTPMS_USE_FREEBL
 
 endif # WITH_TPM2
 

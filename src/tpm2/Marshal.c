@@ -230,7 +230,7 @@ TPM_ALG_ID_Marshal(TPM_ALG_ID *source, BYTE **buffer, INT32 *size)
 
 /* Table 10 - Definition of (UINT16) {ECC} TPM_ECC_CURVE Constants <IN/OUT, S> */
 
-#ifdef TPM_ALG_ECC
+//#ifdef TPM_ALG_ECC
 UINT16
 TPM_ECC_CURVE_Marshal(TPM_ECC_CURVE *source, BYTE **buffer, INT32 *size)
 {
@@ -238,7 +238,7 @@ TPM_ECC_CURVE_Marshal(TPM_ECC_CURVE *source, BYTE **buffer, INT32 *size)
     written += UINT16_Marshal(source, buffer, size);
     return written;
 }
-#endif
+//#endif
 
 /* Table 17 - Definition of (UINT32) TPM_RC Constants (Actions) <OUT> */
 

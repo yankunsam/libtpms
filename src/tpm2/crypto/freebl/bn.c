@@ -1,9 +1,8 @@
 /********************************************************************************/
 /*										*/
-/*			     				*/
-/*			     Written by Ken Goldman				*/
+/*										*/
+/*			     Written by Stefan Berger				*/
 /*		       IBM Thomas J. Watson Research Center			*/
-/*            $Id: CpriCryptPri.c 141 2015-03-16 17:08:34Z kgoldman $		*/
 /*										*/
 /*  Licenses and Notices							*/
 /*										*/
@@ -59,123 +58,43 @@
 /*										*/
 /********************************************************************************/
 
-#include "config.h"
+#include <gmp.h>
 
-/* rev 122 */
+#include "Implementation.h"
+#include "TpmError.h"
 
-// B.6	CpriCryptPri.c
-// B.6.1.	Introduction
-
-// This file contains the interface to the initialization, startup and shutdown functions of the
-// crypto library.
-
-// B.6.2. Includes and Locals
-
-#ifdef USE_OPENSSL_CRYPTO_LIBRARY
-#include "OsslCryptoEngine.h"
-#endif
-#ifdef USE_FREEBL_CRYPTO_LIBRARY
-#include "FreeBLCryptoEngine.h"
-#endif
-NORETURN static void Trap(const char *function, int line, int code);
-FAIL_FUNCTION       TpmFailFunction = (FAIL_FUNCTION)&Trap;
-
-// B.6.3.	Functions
-// B.6.3.1.	TpmFail()
-
-// This is a shim function that is called when a failure occurs. It simply relays the call to the
-// callback pointed to by TpmFailFunction(). It is only defined for the sake of specifier
-// that cannot be added to a function pointer with some compilers.
-
-/* kgold, commented, since there's another in // 9.15.4.2	TpmFail() */
-#if 0
-NORETURN void
-TpmFail(
-	const char          *function,
-	int                  line,
-	int                  code)
+BOOL
+MpzTo2B(TPM2B *outVal, // OUT: place for the result
+	mpz_ptr	inVal, // IN: number to convert
+	UINT16 size // IN: size of the output.
+	)
 {
-    TpmFailFunction(function, line, code);
-}
-#endif
+	BYTE *pb = outVal->buffer;
+	size_t count, numbytes;
 
-// B.6.3.2.	FAILURE_TRAP()
-// This function is called if the caller to _cpri__InitCryptoUnits() doesn't provide a call back address.
+	if(size == 0)
+		size = outVal->size;
+	else
+		outVal->size = size;
 
-NORETURN static void
-Trap(
-     const char      *function,
-     int              line,
-     int              code
-     )
-{
-    NOT_REFERENCED(function);
-    NOT_REFERENCED(line);
-    NOT_REFERENCED(code);
-    abort();
+	numbytes = (((UINT16) mpz_sizeinbase(inVal, 2) + 7) / 8);
+	size = size - numbytes;
+	if(size < 0)
+		return FALSE;
+	for(;size > 0; size--)
+		*pb++ = 0;
+	mpz_export(pb, &count, 1, 1, 1, 0, inVal);
+
+	return TRUE;
 }
 
-// B.6.3.3.	_cpri__InitCryptoUnits()
-
-// This function calls the initialization functions of the other crypto modules that are part of the
-// crypto engine for this implementation. This function should be called as a result of
-// _TPM_Init(). The parameter to this function is a call back function it TPM.lib that is called
-// when the crypto engine has a failure.
-
-LIB_EXPORT CRYPT_RESULT
-_cpri__InitCryptoUnits(
-		       FAIL_FUNCTION    failFunction
-		       )
+mpz_ptr
+MpzFrom2B(mpz_ptr out, // OUT: The BIGNUM
+	  const TPM2B *in // IN: the TPM2B to copy
+)
 {
-    TpmFailFunction = failFunction;
-    
-    _cpri__RngStartup();
-    _cpri__HashStartup();
-    _cpri__SymStartup();
-    
-#ifdef TPM_ALG_RSA
-    _cpri__RsaStartup();
-#endif
-    
-#ifdef TPM_ALG_ECC
-    _cpri__EccStartup();
-#endif
-    
-    return CRYPT_SUCCESS;
+	mpz_import(out, in->size, 1, 1, 1, 0, in);
+
+	return out;
 }
 
-// B.6.3.4.	_cpri__StopCryptoUnits()
-
-// This function calls the shutdown functions of the other crypto modules that are part of the
-// crypto engine for this implementation.
-
-LIB_EXPORT void
-_cpri__StopCryptoUnits(
-		       void
-		       )
-{
-    return;
-}
-
-// B.6.3.5.	_cpri__Startup()
-
-// This function calls the startup functions of the other crypto modules that are part of the crypto
-// engine for this implementation. This function should be called during processing of
-// TPM2_Startup().
-
-LIB_EXPORT BOOL
-_cpri__Startup(
-	       void
-	       )
-{
-    
-    return(   _cpri__HashStartup()
-	      && _cpri__RngStartup()
-#ifdef TPM_ALG_RSA
-	      && _cpri__RsaStartup()
-#endif // TPM_ALG_RSA
-#ifdef TPM_ALG_ECC
-	      && _cpri__EccStartup()
-#endif // TPM_ALG_ECC
-	      && _cpri__SymStartup());
-}

@@ -66,6 +66,8 @@
 #ifndef _IMPLEMENTATION_H_
 #define _IMPLEMENTATION_H_
 
+#include <config.h>
+
 #include "TpmBuildSwitches.h"
 #include "BaseTypes.h"
 #include "TPMB.h"
@@ -112,7 +114,9 @@
 #define  ALG_RSAES             (ALG_YES*ALG_RSA)
 #define  ALG_RSAPSS            (ALG_YES*ALG_RSA)
 #define  ALG_OAEP              (ALG_YES*ALG_RSA)
+#ifndef ALG_ECC /* FreeBL does not support ECC */
 #define  ALG_ECC               ALG_YES
+#endif
 #define  ALG_ECDH              (ALG_YES*ALG_ECC)
 #define  ALG_ECDSA             (ALG_YES*ALG_ECC)
 #define  ALG_ECDAA             (ALG_YES*ALG_ECC)
@@ -139,11 +143,19 @@
 #define  AES_KEY_SIZES_BITS         {128,256}
 #define  AES_KEY_SIZE_BITS_128      AES_ALLOWED_KEY_SIZE_128
 #define  AES_KEY_SIZE_BITS_256      AES_ALLOWED_KEY_SIZE_256
+#ifdef USE_FREEBL_CRYPTO_LIBRARY
+/* FreeBL ony supports 128 bits */
+#define  MAX_AES_KEY_BITS           128
+#define  MAX_AES_KEY_BYTES          16
+#define MAX_AES_BLOCK_SIZE_BYTES				      \
+    MAX(AES_128_BLOCK_SIZE_BYTES, 0)
+#else
 #define  MAX_AES_KEY_BITS           256
 #define  MAX_AES_KEY_BYTES          32
 #define MAX_AES_BLOCK_SIZE_BYTES				      \
     MAX(AES_128_BLOCK_SIZE_BYTES,					\
 	MAX(AES_256_BLOCK_SIZE_BYTES, 0))
+#endif
 #define  SM4_KEY_SIZES_BITS         {128}
 #define  SM4_KEY_SIZE_BITS_128      SM4_ALLOWED_KEY_SIZE_128
 #define  MAX_SM4_KEY_BITS           128

@@ -217,7 +217,7 @@ TPM_ALG_ID_Unmarshal(TPM_ALG_ID *target, BYTE **buffer, INT32 *size)
 
 /* Table 10 - Definition of (UINT16) {ECC} TPM_ECC_CURVE Constants <IN/OUT, S> */
 
-#ifdef TPM_ALG_ECC
+//#ifdef TPM_ALG_ECC
 TPM_RC
 TPM_ECC_CURVE_Unmarshal(TPM_ECC_CURVE *target, BYTE **buffer, INT32 *size)
 {
@@ -244,7 +244,7 @@ TPM_ECC_CURVE_Unmarshal(TPM_ECC_CURVE *target, BYTE **buffer, INT32 *size)
     }
     return rc;
 }
-#endif
+//#endif
 
 /* Table 13 - Definition of (UINT32) TPM_CC Constants (Numeric Order) <IN/OUT, S> */
 

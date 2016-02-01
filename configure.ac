@@ -128,9 +128,9 @@ AC_ARG_WITH([tpm2],
 	AC_HELP_STRING([--wih-tpm2],
                        [build libtpms with TPM2 support (experimental)]),
         AC_MSG_RESULT([Building with TPM2 support])
-        if test "x$cryptolib" = "xfreebl"; then
-        	AC_MSG_ERROR([TPM2 support requires openssl crypto library])
-        fi
+        #if test "x$cryptolib" = "xfreebl"; then
+        #	AC_MSG_ERROR([TPM2 support requires openssl crypto library])
+        #fi
         AC_DEFINE_UNQUOTED([WITH_TPM2], 1, [whether to support TPM2])
         AM_CONDITIONAL(WITH_TPM2, true),
         AM_CONDITIONAL(WITH_TPM2, false)

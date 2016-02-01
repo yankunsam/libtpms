@@ -1,9 +1,8 @@
 /********************************************************************************/
 /*										*/
-/*			     				*/
-/*			     Written by Ken Goldman				*/
+/*										*/
+/*			     Written by Stefan Berger				*/
 /*		       IBM Thomas J. Watson Research Center			*/
-/*            $Id: CpriCryptPri.c 141 2015-03-16 17:08:34Z kgoldman $		*/
 /*										*/
 /*  Licenses and Notices							*/
 /*										*/
@@ -59,123 +58,58 @@
 /*										*/
 /********************************************************************************/
 
-#include "config.h"
-
-/* rev 122 */
-
-// B.6	CpriCryptPri.c
-// B.6.1.	Introduction
-
-// This file contains the interface to the initialization, startup and shutdown functions of the
-// crypto library.
-
-// B.6.2. Includes and Locals
-
-#ifdef USE_OPENSSL_CRYPTO_LIBRARY
-#include "OsslCryptoEngine.h"
+#ifndef     RSA_H
+#define     RSA_H
+extern const UINT16   primeTableBytes;
+#define PRIME_DIFF_TABLE_512_BYTE_PAGES     13
+#ifndef PRIME_DIFF_TABLE_512_BYTE_PAGES
+#   define PRIME_DIFF_TABLE_512_BYTE_PAGES   4
 #endif
-#ifdef USE_FREEBL_CRYPTO_LIBRARY
-#include "FreeBLCryptoEngine.h"
+#ifdef PRIME_DIFF_TABLE_512_BYTE_PAGES
+#   if PRIME_DIFF_TABLE_512_BYTE_PAGES > 12
+#       define PRIME_DIFF_TABLE_BYTES 6542
+#   else
+#       if  PRIME_DIFF_TABLE_512_BYTE_PAGES <= 0
+#           define PRIME_DIFF_TABLE_BYTES 512
+#       else
+#           define PRIME_DIFF_TABLE_BYTES (PRIME_DIFF_TABLE_512_BYTE_PAGES * 512)
+#       endif
+#   endif
 #endif
-NORETURN static void Trap(const char *function, int line, int code);
-FAIL_FUNCTION       TpmFailFunction = (FAIL_FUNCTION)&Trap;
-
-// B.6.3.	Functions
-// B.6.3.1.	TpmFail()
-
-// This is a shim function that is called when a failure occurs. It simply relays the call to the
-// callback pointed to by TpmFailFunction(). It is only defined for the sake of specifier
-// that cannot be added to a function pointer with some compilers.
-
-/* kgold, commented, since there's another in // 9.15.4.2	TpmFail() */
-#if 0
-NORETURN void
-TpmFail(
-	const char          *function,
-	int                  line,
-	int                  code)
-{
-    TpmFailFunction(function, line, code);
-}
+extern const BYTE primeDiffTable[PRIME_DIFF_TABLE_BYTES];
+#define FIELD_POWER     14  // This is the only value in this group that should be
+                            // changed
+#define FIELD_BITS      (1 << FIELD_POWER)
+#define MAX_FIELD_SIZE      ((FIELD_BITS / 8) + 1)
+#define SEED_VALUES_SIZE          105
+const extern BYTE                 seedValues[SEED_VALUES_SIZE];
+const extern BYTE                 bitsInByte[256];
+typedef struct {
+    UINT16      lastPrime;
+    UINT16      index;
+    UINT16      final;
+} PRIME_ITERATOR;
+#ifdef  RSA_INSTRUMENT
+#   define INSTRUMENT_SET(a, b) ((a) = (b))
+#   define INSTRUMENT_ADD(a, b) (a) = (a) + (b)
+#   define INSTRUMENT_INC(a)    (a) = (a) + 1
+extern UINT32  failedAtIteration[10];
+extern UINT32  MillerRabinTrials;
+extern UINT32  totalFieldsSieved;
+extern UINT32  emptyFieldsSieved;
+extern UINT32  noPrimeFields;
+extern UINT32  primesChecked;
+extern UINT16   lastSievePrime;
+#else
+#   define INSTRUMENT_SET(a, b)
+#   define INSTRUMENT_ADD(a, b)
+#   define INSTRUMENT_INC(a)
 #endif
-
-// B.6.3.2.	FAILURE_TRAP()
-// This function is called if the caller to _cpri__InitCryptoUnits() doesn't provide a call back address.
-
-NORETURN static void
-Trap(
-     const char      *function,
-     int              line,
-     int              code
-     )
-{
-    NOT_REFERENCED(function);
-    NOT_REFERENCED(line);
-    NOT_REFERENCED(code);
-    abort();
-}
-
-// B.6.3.3.	_cpri__InitCryptoUnits()
-
-// This function calls the initialization functions of the other crypto modules that are part of the
-// crypto engine for this implementation. This function should be called as a result of
-// _TPM_Init(). The parameter to this function is a call back function it TPM.lib that is called
-// when the crypto engine has a failure.
-
-LIB_EXPORT CRYPT_RESULT
-_cpri__InitCryptoUnits(
-		       FAIL_FUNCTION    failFunction
-		       )
-{
-    TpmFailFunction = failFunction;
-    
-    _cpri__RngStartup();
-    _cpri__HashStartup();
-    _cpri__SymStartup();
-    
-#ifdef TPM_ALG_RSA
-    _cpri__RsaStartup();
+#ifdef RSA_DEBUG
+extern UINT16   defaultFieldSize;
+#define NUM_PRIMES          2047
+extern const __int16        primes[NUM_PRIMES];
+#else
+#define defaultFieldSize    MAX_FIELD_SIZE
 #endif
-    
-#ifdef TPM_ALG_ECC
-    _cpri__EccStartup();
 #endif
-    
-    return CRYPT_SUCCESS;
-}
-
-// B.6.3.4.	_cpri__StopCryptoUnits()
-
-// This function calls the shutdown functions of the other crypto modules that are part of the
-// crypto engine for this implementation.
-
-LIB_EXPORT void
-_cpri__StopCryptoUnits(
-		       void
-		       )
-{
-    return;
-}
-
-// B.6.3.5.	_cpri__Startup()
-
-// This function calls the startup functions of the other crypto modules that are part of the crypto
-// engine for this implementation. This function should be called during processing of
-// TPM2_Startup().
-
-LIB_EXPORT BOOL
-_cpri__Startup(
-	       void
-	       )
-{
-    
-    return(   _cpri__HashStartup()
-	      && _cpri__RngStartup()
-#ifdef TPM_ALG_RSA
-	      && _cpri__RsaStartup()
-#endif // TPM_ALG_RSA
-#ifdef TPM_ALG_ECC
-	      && _cpri__EccStartup()
-#endif // TPM_ALG_ECC
-	      && _cpri__SymStartup());
-}

@@ -59,11 +59,18 @@
 /*										*/
 /********************************************************************************/
 
+#include "config.h"
+
 /* rev 119 */
 
 // B.12.2.4.	RSAData.c
 
+#ifdef USE_OPENSSL_CRYPTO_LIBRARY
 #include "OsslCryptoEngine.h"
+#endif
+#ifdef USE_FREEBL_CRYPTO_LIBRARY
+#include "FreeBLCryptoEngine.h"
+#endif
 #ifdef  RSA_KEY_SIEVE
 #include "RsaKeySieve.h"
 #ifdef RSA_DEBUG

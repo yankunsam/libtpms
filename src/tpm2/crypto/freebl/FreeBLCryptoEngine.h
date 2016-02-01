@@ -1,9 +1,8 @@
 /********************************************************************************/
 /*										*/
-/*			     				*/
-/*			     Written by Ken Goldman				*/
+/*										*/
+/*			     Written by Stefan Berger				*/
 /*		       IBM Thomas J. Watson Research Center			*/
-/*            $Id: CpriCryptPri.c 141 2015-03-16 17:08:34Z kgoldman $		*/
 /*										*/
 /*  Licenses and Notices							*/
 /*										*/
@@ -59,123 +58,93 @@
 /*										*/
 /********************************************************************************/
 
-#include "config.h"
+#ifndef FREEBL_CRYPTO_ENGINE_H
+#define FREEBL_CRYPTO_ENGINE_H
 
-/* rev 122 */
+#include <nss3/blapi.h>
+#include <nss3/blapit.h>
+#include <gmp.h>
 
-// B.6	CpriCryptPri.c
-// B.6.1.	Introduction
+#define     CRYPTO_ENGINE
+#include "CryptoEngine.h"
+#include "mpz_helpers.h"
+#include "bn.h"
 
-// This file contains the interface to the initialization, startup and shutdown functions of the
-// crypto library.
+#define MAX_2B_BYTES MAX((MAX_RSA_KEY_BYTES * ALG_RSA),             \
+			 MAX((MAX_ECC_KEY_BYTES * ALG_ECC),	\
+			     MAX_DIGEST_SIZE))
+#define assert2Bsize(a) pAssert((a).size <= sizeof((a).buffer))
 
-// B.6.2. Includes and Locals
 
-#ifdef USE_OPENSSL_CRYPTO_LIBRARY
-#include "OsslCryptoEngine.h"
+#define FREEBL_HASH_STATE_DATA_SIZE    (MAX_HASH_STATE_SIZE - 8)
+
+// FIXME: BEGIN copied from freebl lib
+// we *at least* would need the sizeof(SHA512ContextStr)
+
+typedef PRUint64 SHA_HW_t;
+
+struct SHA1ContextStr {
+  union {
+    PRUint32 w[16];             /* input buffer */
+    PRUint8  b[64];
+  } u;
+  PRUint64 size;                /* count of hashed bytes. */
+  SHA_HW_t H[22];               /* 5 state variables, 16 tmp values, 1 extra */
+};
+
+struct SHA256ContextStr {
+    union {
+        PRUint32 w[64];     /* message schedule, input buffer, plus 48 words */
+        PRUint8  b[256];
+    } u;
+    PRUint32 h[8];              /* 8 state variables */
+    PRUint32 sizeHi,sizeLo;     /* 64-bit count of hashed bytes. */
+};
+
+struct SHA512ContextStr {
+    union {
+        PRUint64 w[80];     /* message schedule, input buffer, plus 64 words */
+        PRUint32 l[160];
+        PRUint8  b[640];
+    } u;
+    PRUint64 h[8];          /* 8 state variables */
+    PRUint64 sizeLo;        /* 64-bit count of hashed bytes. */
+};
+
+// FIXME: END
+
+typedef struct SHA256ContextStr SHA256Context;
+typedef struct SHA512ContextStr SHA512Context;
+
+typedef struct {
+    union
+    {
+#ifdef TPM_ALG_SHA1
+        SHA1Context     sha1_ctxt;
 #endif
-#ifdef USE_FREEBL_CRYPTO_LIBRARY
-#include "FreeBLCryptoEngine.h"
+#ifdef TPM_ALG_SHA224
+        SHA224Context   sha224_ctxt;
 #endif
-NORETURN static void Trap(const char *function, int line, int code);
-FAIL_FUNCTION       TpmFailFunction = (FAIL_FUNCTION)&Trap;
-
-// B.6.3.	Functions
-// B.6.3.1.	TpmFail()
-
-// This is a shim function that is called when a failure occurs. It simply relays the call to the
-// callback pointed to by TpmFailFunction(). It is only defined for the sake of specifier
-// that cannot be added to a function pointer with some compilers.
-
-/* kgold, commented, since there's another in // 9.15.4.2	TpmFail() */
-#if 0
-NORETURN void
-TpmFail(
-	const char          *function,
-	int                  line,
-	int                  code)
-{
-    TpmFailFunction(function, line, code);
-}
+#ifdef TPM_ALG_SHA256
+        SHA256Context   sha256_ctxt;
 #endif
-
-// B.6.3.2.	FAILURE_TRAP()
-// This function is called if the caller to _cpri__InitCryptoUnits() doesn't provide a call back address.
-
-NORETURN static void
-Trap(
-     const char      *function,
-     int              line,
-     int              code
-     )
-{
-    NOT_REFERENCED(function);
-    NOT_REFERENCED(line);
-    NOT_REFERENCED(code);
-    abort();
-}
-
-// B.6.3.3.	_cpri__InitCryptoUnits()
-
-// This function calls the initialization functions of the other crypto modules that are part of the
-// crypto engine for this implementation. This function should be called as a result of
-// _TPM_Init(). The parameter to this function is a call back function it TPM.lib that is called
-// when the crypto engine has a failure.
-
-LIB_EXPORT CRYPT_RESULT
-_cpri__InitCryptoUnits(
-		       FAIL_FUNCTION    failFunction
-		       )
-{
-    TpmFailFunction = failFunction;
-    
-    _cpri__RngStartup();
-    _cpri__HashStartup();
-    _cpri__SymStartup();
-    
-#ifdef TPM_ALG_RSA
-    _cpri__RsaStartup();
+#ifdef TPM_ALG_SHA384
+        SHA384Context   sha384_ctxt;
 #endif
-    
-#ifdef TPM_ALG_ECC
-    _cpri__EccStartup();
+#ifdef TPM_ALG_SHA512
+        SHA512Context   sha512_ctxt;
 #endif
-    
-    return CRYPT_SUCCESS;
-}
+    } u;
+    TPM_ALG_ID      hashAlg;
+} FBLHashContext;
 
-// B.6.3.4.	_cpri__StopCryptoUnits()
+typedef struct {
+    union
+    {
+        FBLHashContext    context;
+        BYTE              data[FREEBL_HASH_STATE_DATA_SIZE];
+    } u;
+    INT16           copySize;
+} FREEBL_HASH_STATE;
 
-// This function calls the shutdown functions of the other crypto modules that are part of the
-// crypto engine for this implementation.
-
-LIB_EXPORT void
-_cpri__StopCryptoUnits(
-		       void
-		       )
-{
-    return;
-}
-
-// B.6.3.5.	_cpri__Startup()
-
-// This function calls the startup functions of the other crypto modules that are part of the crypto
-// engine for this implementation. This function should be called during processing of
-// TPM2_Startup().
-
-LIB_EXPORT BOOL
-_cpri__Startup(
-	       void
-	       )
-{
-    
-    return(   _cpri__HashStartup()
-	      && _cpri__RngStartup()
-#ifdef TPM_ALG_RSA
-	      && _cpri__RsaStartup()
-#endif // TPM_ALG_RSA
-#ifdef TPM_ALG_ECC
-	      && _cpri__EccStartup()
-#endif // TPM_ALG_ECC
-	      && _cpri__SymStartup());
-}
+#endif

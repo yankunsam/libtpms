@@ -122,10 +122,12 @@ static const DISPATCH_TABLE dispatchTable [] = {
     {TPM_CC_Import, (UnmarshalFunction_t)Import_In_Unmarshal, TPM2_Import, (MarshalFunction_t)Import_Out_Marshal},
     {TPM_CC_RSA_Encrypt, (UnmarshalFunction_t)RSA_Encrypt_In_Unmarshal, TPM2_RSA_Encrypt, (MarshalFunction_t)RSA_Encrypt_Out_Marshal},
     {TPM_CC_RSA_Decrypt, (UnmarshalFunction_t)RSA_Decrypt_In_Unmarshal, TPM2_RSA_Decrypt, (MarshalFunction_t)RSA_Decrypt_Out_Marshal},
+#ifdef TPM_ALG_ECC
     {TPM_CC_ECDH_KeyGen, (UnmarshalFunction_t)ECDH_KeyGen_In_Unmarshal, TPM2_ECDH_KeyGen, (MarshalFunction_t)ECDH_KeyGen_Out_Marshal},
     {TPM_CC_ECDH_ZGen, (UnmarshalFunction_t)ECDH_ZGen_In_Unmarshal, TPM2_ECDH_ZGen, (MarshalFunction_t)ECDH_ZGen_Out_Marshal},
     {TPM_CC_ECC_Parameters, (UnmarshalFunction_t)ECC_Parameters_In_Unmarshal, TPM2_ECC_Parameters, (MarshalFunction_t)ECC_Parameters_Out_Marshal},
     {TPM_CC_ZGen_2Phase, (UnmarshalFunction_t)ZGen_2Phase_In_Unmarshal, TPM2_ZGen_2Phase, (MarshalFunction_t)ZGen_2Phase_Out_Marshal},
+#endif
     {TPM_CC_EncryptDecrypt, (UnmarshalFunction_t)EncryptDecrypt_In_Unmarshal, TPM2_EncryptDecrypt, (MarshalFunction_t)EncryptDecrypt_Out_Marshal},
     {TPM_CC_Hash, (UnmarshalFunction_t)Hash_In_Unmarshal, TPM2_Hash, (MarshalFunction_t)Hash_Out_Marshal},
     {TPM_CC_HMAC, (UnmarshalFunction_t)HMAC_In_Unmarshal, TPM2_HMAC, (MarshalFunction_t)HMAC_Out_Marshal},
@@ -142,8 +144,10 @@ static const DISPATCH_TABLE dispatchTable [] = {
     {TPM_CC_GetSessionAuditDigest, (UnmarshalFunction_t)GetSessionAuditDigest_In_Unmarshal, TPM2_GetSessionAuditDigest, (MarshalFunction_t)GetSessionAuditDigest_Out_Marshal},
     {TPM_CC_GetCommandAuditDigest, (UnmarshalFunction_t)GetCommandAuditDigest_In_Unmarshal, TPM2_GetCommandAuditDigest, (MarshalFunction_t)GetCommandAuditDigest_Out_Marshal},
     {TPM_CC_GetTime, (UnmarshalFunction_t)GetTime_In_Unmarshal, TPM2_GetTime, (MarshalFunction_t)GetTime_Out_Marshal},
+#ifdef TPM_ALG_ECC
     {TPM_CC_Commit, (UnmarshalFunction_t)Commit_In_Unmarshal, TPM2_Commit, (MarshalFunction_t)Commit_Out_Marshal},
     {TPM_CC_EC_Ephemeral, (UnmarshalFunction_t)EC_Ephemeral_In_Unmarshal, TPM2_EC_Ephemeral, (MarshalFunction_t)EC_Ephemeral_Out_Marshal},
+#endif
     {TPM_CC_VerifySignature, (UnmarshalFunction_t)VerifySignature_In_Unmarshal, TPM2_VerifySignature, (MarshalFunction_t)VerifySignature_Out_Marshal},
     {TPM_CC_Sign, (UnmarshalFunction_t)Sign_In_Unmarshal, TPM2_Sign, (MarshalFunction_t)Sign_Out_Marshal},
     {TPM_CC_SetCommandCodeAuditStatus, (UnmarshalFunction_t)SetCommandCodeAuditStatus_In_Unmarshal, TPM2_SetCommandCodeAuditStatus, NULL},
