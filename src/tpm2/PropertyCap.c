@@ -393,7 +393,7 @@ TPMPropertyIsDefined(
 	  case TPM_PT_PERMANENT:
 	    // TPMA_PERMANENT
 	      {
-		  TPMA_PERMANENT          flags = {0};
+		  TPMA_PERMANENT          flags = {0}, *flags_p;
 		  if(gp.ownerAuth.t.size != 0)
 		      flags.ownerAuthSet = SET;
 		  if(gp.endorsementAuth.t.size != 0)
@@ -408,13 +408,14 @@ TPMPropertyIsDefined(
 		  flags.tpmGeneratedEPS = SET;
 		  // Note: Different compilers may require a different method to cast
 		  // a bit field structure to a UINT32.
-		  *value = *(UINT32 *)&flags;
+		  flags_p = &flags;
+		  *value = *(UINT32 *)flags_p;
 		  break;
 	      }
 	  case TPM_PT_STARTUP_CLEAR:
 	    // TPMA_STARTUP_CLEAR
 	      {
-		  TPMA_STARTUP_CLEAR      flags = {0};
+		  TPMA_STARTUP_CLEAR      flags = {0}, *flags_p;
 		  if(g_phEnable)
 		      flags.phEnable = SET;
 		  if(gc.shEnable)
@@ -427,7 +428,8 @@ TPMPropertyIsDefined(
 		      flags.orderly = SET;
 		  // Note: Different compilers may require a different method to cast
 		  // a bit field structure to a UINT32.
-		  *value = *(UINT32 *)&flags;
+		  flags_p = &flags;
+		  *value = *(UINT32 *)flags_p;
 		  break;
 	      }
 	  case TPM_PT_HR_NV_INDEX:

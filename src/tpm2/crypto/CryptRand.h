@@ -104,17 +104,17 @@ typedef tpmKeyScheduleAES DRBG_KEY_SCHEDULE;
 typedef union
 {
     BYTE            bytes[DRBG_KEY_SIZE_BYTES];
-    crypt_uword_t   words[1];
+    crypt_uword_t   words[DRBG_KEY_SIZE_BYTES/sizeof(crypt_uword_t)];
 } DRBG_KEY;
 typedef union
 {
     BYTE        bytes[DRBG_IV_SIZE_BYTES];
-    crypt_uword_t   words[1];
+    crypt_uword_t   words[DRBG_KEY_SIZE_BYTES/sizeof(crypt_uword_t)];
 } DRBG_IV;
 typedef union
 {
     BYTE        bytes[DRBG_SEED_SIZE_BYTES];
-    crypt_uword_t   words[1];
+    crypt_uword_t   words[DRBG_KEY_SIZE_BYTES/sizeof(crypt_uword_t)];
 } DRBG_SEED;
 #define CTR_DRBG_MAX_REQUESTS_PER_RESEED        ((UINT64)1 << 20)
 #define CTR_DRBG_MAX_BYTES_PER_REQUEST          (1 << 16)
