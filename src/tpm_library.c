@@ -404,11 +404,11 @@ int TPMLIB_LogPrintf(const char *format, ...)
             return -1;
         i++;
     }
-
+#if 0
     if (debug_prefix)
         dprintf(debug_fd, debug_prefix);
     dprintf(debug_fd, buffer);
-
+#endif
     return i;
 }
 
